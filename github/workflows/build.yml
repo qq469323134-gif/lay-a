@@ -1,0 +1,41 @@
+name: Build LayAndRelax ASI
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '**.cpp'
+      - '**.h'
+      - '.github/workflows/**'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check ScriptHookV SDK
+        shell: pwsh
+        run: |
+          if (!(Test-Path "sdk/inc/script.h")) {
+            throw "Missing sdk/inc/script.h"
+          }
+          if (!(Test-Path "sdk/lib/ScriptHookV.lib")) {
+            throw "Missing sdk/lib/ScriptHookV.lib"
+          }
+
+      - name: Build x64 ASI
+        shell: cmd
+        run: |
+          call "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath > vs_path.txt
+          set /p VS_PATH=<vs_path.txt
+          call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat"
+          cl /nologo /std:c++17 /EHsc /O2 /LD /I sdk\inc LayAndRelax.cpp /link /LIBPATH:sdk\lib ScriptHookV.lib /OUT:LayAndRelax.asi
+
+      - name: Upload ASI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LayAndRelax-ASI
+          path: |
+            LayAndRelax.asi
+            LayAndRelax.ini
